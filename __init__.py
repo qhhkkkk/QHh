@@ -65,6 +65,30 @@ def base64_to_tensor(b64_str):
     return torch.from_numpy(arr).unsqueeze(0)
 
 
+ASPECT_RATIOS = ["auto", "1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"]
+RESOLUTIONS = ["1K", "2K", "4K"]
+_RESOLUTION_BASE = {"1K": 1024, "2K": 2048, "4K": 4096}
+
+
+def aspect_ratio_to_size(aspect_ratio, resolution):
+    """把 比例+分辨率 换算成像素尺寸字符串（GPT Image 的 size 参数）。
+
+    Gemini 接口原生支持 imageConfig，无需换算；OpenAI images 接口只认 size，
+    这里按 长边=分辨率基准 换算并取 64 的倍数（auto 直接返回 auto）。
+    """
+    if aspect_ratio == "auto":
+        return "auto"
+    base = _RESOLUTION_BASE[resolution]
+    w_part, h_part = aspect_ratio.split(":")
+    w_ratio, h_ratio = float(w_part), float(h_part)
+    if w_ratio >= h_ratio:  # 横版/方版：长边为宽
+        w, h = base, base * h_ratio / w_ratio
+    else:                   # 竖版：长边为高
+        h, w = base, base * w_ratio / h_ratio
+    round64 = lambda x: max(64, int(round(x / 64.0)) * 64)
+    return "{}x{}".format(round64(w), round64(h))
+
+
 class Banana:
     """Nano Banana Pro 图生图/文生图（Gemini 原生协议，API 直连）"""
 
@@ -80,8 +104,8 @@ class Banana:
                 "model": ("STRING", {"default": "gemini-3-pro-image", "tooltip": "供应商模型列表里的 Gemini 图像模型 ID"}),
                 "api_url": ("STRING", {"default": "https://api.lk888.ai/v1beta", "tooltip": "填到 /v1beta 为止，节点自动拼接 /models/{模型}:generateContent"}),
                 "api_key": ("STRING", {"default": "sk-请替换为你的API密钥", "tooltip": "你的 API Key"}),
-                "aspect_ratio": (["auto", "1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"], {"tooltip": "输出画面比例"}),
-                "resolution": (["1K", "2K", "4K"], {"tooltip": "输出分辨率，越高越慢越贵"}),
+                "aspect_ratio": (ASPECT_RATIOS, {"tooltip": "输出画面比例"}),
+                "resolution": (RESOLUTIONS, {"tooltip": "输出分辨率，越高越慢越贵"}),
             },
             "optional": {
                 "images": ("IMAGE", {"tooltip": "可选：原图（图生图）。多张图会一起作为参考图发送，最多14张。"}),
@@ -175,8 +199,8 @@ class GPTImage:
                 "model": ("STRING", {"default": "gpt-image-2.5-sunburst-vip", "tooltip": "供应商模型列表里的 GPT Image 模型 ID"}),
                 "api_url": ("STRING", {"default": "https://api.lk888.ai/v1", "tooltip": "OpenAI 兼容端点，填到 /v1 为止"}),
                 "api_key": ("STRING", {"default": "sk-请替换为你的API密钥", "tooltip": "你的 API Key"}),
-                "size": (["1024x1024", "1024x1536", "1536x1024", "auto"], {"tooltip": "输出尺寸，只有固定三档"}),
-                "quality": (["auto", "low", "medium", "high"], {"tooltip": "生成质量"}),
+                "aspect_ratio": (ASPECT_RATIOS, {"tooltip": "输出画面比例（内部换算为 size 参数）"}),
+                "resolution": (RESOLUTIONS, {"tooltip": "输出分辨率（内部换算为 size 参数；若供应商只支持固定三档尺寸，1K 以外的档位可能报错）"}),
             },
             "optional": {
                 "images": ("IMAGE", {"tooltip": "可选：原图（图生图编辑）。提供后走 /images/edits 接口。"}),
@@ -190,10 +214,11 @@ class GPTImage:
     OUTPUT_NODE = False
     DESCRIPTION = "通过 OpenAI images 协议直连出图。传原图走 /images/edits 编辑，不传走 /images/generations 生成。text 输出为 revised_prompt（如有）。"
 
-    def generate(self, prompt, model, api_url, api_key, size, quality, images=None):
+    def generate(self, prompt, model, api_url, api_key, aspect_ratio, resolution, images=None):
         if not api_key or api_key.startswith("sk-请替换"):
             raise ValueError("请先在节点上填写你的 API Key")
 
+        size = aspect_ratio_to_size(aspect_ratio, resolution)
         base = api_url.rstrip("/")
         headers = {"Authorization": "Bearer " + api_key}
 
@@ -214,7 +239,6 @@ class GPTImage:
                 "model": (None, model),
                 "prompt": (None, prompt),
                 "size": (None, size),
-                "quality": (None, quality),
             }
             response = requests.post(url, headers=headers, data=form, files=files, timeout=REQUEST_TIMEOUT)
         # 文生图：/images/generations（JSON）
@@ -225,7 +249,6 @@ class GPTImage:
                 "prompt": prompt,
                 "n": 1,
                 "size": size,
-                "quality": quality,
             }
             response = requests.post(url, headers=headers, json=payload, timeout=REQUEST_TIMEOUT)
 

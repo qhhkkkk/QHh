@@ -11,6 +11,8 @@
 
 两个节点均输出 `IMAGE` + `text`（模型返回的文字，如 revised_prompt）。
 
+两个节点的 `aspect_ratio` / `resolution` 参数完全一致，可在画布上直接互换。GPTImage 内部会把 比例+分辨率 换算成像素 size（如 16:9 + 2K → 2048x1152）；若供应商只支持固定三档尺寸，超出档位可能报错，届时用 1K 即可。
+
 ## 安装
 
 **方式一（推荐）**：ComfyUI Manager → Install via Git URL → 粘贴本仓库地址
