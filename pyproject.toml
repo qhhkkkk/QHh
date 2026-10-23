@@ -1,0 +1,14 @@
+[project]
+name = "qh-ah-nodes"
+description = "API image generation nodes: Nano Banana Pro (Gemini native) and GPT Image (OpenAI images protocol)"
+version = "1.0.0"
+license = {text = "MIT"}
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/qhhkkkk/QHh"
+
+[tool.comfy]
+PublisherId = "qhhkkkk"
+DisplayName = "QHh API Nodes"
+Icon = ""
