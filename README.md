@@ -1,17 +1,19 @@
 # QHh - ComfyUI API 出图节点
 
-自用 ComfyUI 自定义节点包，通过 OpenAI 兼容 API 直连出图，无需 Comfy 账户。
+自用 ComfyUI 自定义节点包，通过 API 直连出图，无需 Comfy 账户，使用自己的 API Key 按供应商计费。
 
 ## 包含节点
 
-| 节点 | 显示名 | 协议 | 说明 |
-|---|---|---|---|
-| `Banana` | 🍌 Nano Banana Pro (API直连) | Gemini 原生 | 图生图/文生图，支持最多 14 张参考图、1K/2K/4K、10 种画面比例 |
-| `GPTImage` | 🖼 GPT Image 2.5 (API直连) | OpenAI images | 传原图走 `/images/edits` 编辑，不传走 `/images/generations` 生成 |
+| 节点 | 显示名 | 协议 | 默认模型 | 说明 |
+|---|---|---|---|---|
+| `Banana` | 🍌 Nano Banana Pro (API直连) | Gemini 原生 | `banana-2.1` | 图生图/文生图，最多 14 张参考图、1K/2K/4K、10 种画面比例 |
+| `GPTImage` | 🖼 GPT Image 2.5 (API直连) | OpenAI images | `tt-image-2.5` | 传原图走 `/images/edits` 编辑，不传走 `/images/generations` 生成 |
 
 两个节点均输出 `IMAGE` + `text`（模型返回的文字，如 revised_prompt）。
 
 两个节点的 `aspect_ratio` / `resolution` 参数完全一致，可在画布上直接互换。GPTImage 内部会把 比例+分辨率 换算成像素 size（如 16:9 + 2K → 2048x1152）；若供应商只支持固定三档尺寸，超出档位可能报错，届时用 1K 即可。
+
+模型名为自由输入框，填你的 API 供应商模型列表里的任意图像模型 ID，上新模型无需改代码。
 
 ## 安装
 
@@ -30,9 +32,11 @@ git clone https://github.com/qhhkkkk/QHh.git
 |---|---|
 | `api_url` | Banana 填到 `/v1beta`（节点自动拼 `/models/{模型}:generateContent`）；GPTImage 填到 `/v1` |
 | `api_key` | 你的 API Key（`sk-` 开头） |
-| `model` | 自由输入，填你的 API 供应商模型列表里的图像模型 ID |
+| `model` | 自由输入，默认 `banana-2.1` / `tt-image-2.5` |
+| `aspect_ratio` | 输出画面比例：auto、1:1、2:3、3:2、3:4、4:3、4:5、5:4、9:16、16:9、21:9 |
+| `resolution` | 输出分辨率：1K / 2K / 4K |
 
-注意：两个节点协议不同，模型名不能互换——Banana 只认 Gemini 系图像模型，GPTImage 只认 gpt-image 系。
+注意：两个节点协议不同，模型名不能互换——Banana 只认 Gemini 原生端点的图像模型，GPTImage 只认 OpenAI images 端点的模型。
 
 ## 特性
 
