@@ -1,7 +1,7 @@
 [project]
 name = "qh-ah-nodes"
-description = "API image generation nodes: Nano Banana Pro (Gemini native) and GPT Image (OpenAI images protocol)"
-version = "1.0.0"
+description = "API nodes: Nano Banana Pro (Gemini native), GPT Image (OpenAI images) and Prompt LLM (OpenAI chat)"
+version = "1.1.0"
 license = {text = "MIT"}
 dependencies = []
 

@@ -8,8 +8,9 @@
 |---|---|---|---|---|
 | `Banana` | 🍌 Nano Banana Pro (API直连) | Gemini 原生 | `banana-2.1` | 图生图/文生图，最多 14 张参考图、1K/2K/4K、10 种画面比例 |
 | `GPTImage` | 🖼 GPT Image 2.5 (API直连) | OpenAI images | `tt-image-2.5` | 传原图走 `/images/edits` 编辑，不传走 `/images/generations` 生成 |
+| `PromptLLM` | 💬 GPT 写提示词 (API直连) | OpenAI chat | `tt-6.1-sol` | 文字模型生成/改写出图提示词，可带参考图（vision，最多 8 张） |
 
-两个节点均输出 `IMAGE` + `text`（模型返回的文字，如 revised_prompt）。
+`Banana` / `GPTImage` 均输出 `IMAGE` + `text`（模型返回的文字，如 revised_prompt）；`PromptLLM` 输出 `text`。
 
 两个节点的 `aspect_ratio` / `resolution` 参数完全一致，可在画布上直接互换。GPTImage 内部会把 比例+分辨率 换算成像素 size（如 16:9 + 2K → 2048x1152）；若供应商只支持固定三档尺寸，超出档位可能报错，届时用 1K 即可。
 

@@ -279,14 +279,101 @@ class GPTImage:
         return (final_image, "\n".join(texts_out),)
 
 
+class PromptLLM:
+    """GPT 写提示词（OpenAI chat 协议，API 直连）
+
+    用文字模型根据原图和编辑需求生成/改写出图提示词。
+    支持把参考图一起发给模型（OpenAI vision 格式）。
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "system_prompt": ("STRING", {
+                    "multiline": True,
+                    "default": "你是专业的图像编辑提示词工程师。请根据用户提供的原图和编辑需求，写一段具体的图生图编辑提示词：说明改什么、保留什么，以及光线、材质、构图细节。直接输出最终提示词本身，不要任何解释、引号或标题。",
+                    "tooltip": "系统提示词：定义模型的角色和输出格式",
+                }),
+                "user_prompt": ("STRING", {
+                    "multiline": True,
+                    "default": "",
+                    "tooltip": "用户需求：想改成什么样",
+                }),
+                "model": ("STRING", {"default": "tt-6.1-sol", "tooltip": "供应商模型列表里的文字/多模态模型 ID"}),
+                "api_url": ("STRING", {"default": "https://api.lk888.ai/v1", "tooltip": "OpenAI 兼容端点，填到 /v1 为止"}),
+                "api_key": ("STRING", {"default": "sk-请替换为你的API密钥", "tooltip": "你的 API Key"}),
+                "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 2.0, "step": 0.1, "tooltip": "越高越发散，越低越稳定"}),
+                "max_tokens": ("INT", {"default": 1024, "min": 64, "max": 32768, "step": 64, "tooltip": "回复的最大 token 数"}),
+            },
+            "optional": {
+                "images": ("IMAGE", {"tooltip": "可选：把参考图一起发给模型看（vision），多张图会一起发送"}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("text",)
+    FUNCTION = "generate"
+    CATEGORY = "QHh"
+    OUTPUT_NODE = False
+    DESCRIPTION = "OpenAI chat 协议直连文字模型，可带参考图（vision），输出生成的提示词文本。"
+
+    def generate(self, system_prompt, user_prompt, model, api_url, api_key, temperature, max_tokens, images=None):
+        if not api_key or api_key.startswith("sk-请替换"):
+            raise ValueError("请先在节点上填写你的 API Key")
+
+        url = api_url.rstrip("/") + "/chat/completions"
+        headers = {
+            "Authorization": "Bearer " + api_key,
+            "Content-Type": "application/json",
+        }
+
+        if images is not None:
+            content = [{"type": "text", "text": user_prompt}]
+            for b64, mime in dedupe_images(tensor_to_png_base64(images))[:8]:
+                content.append({
+                    "type": "image_url",
+                    "image_url": {"url": "data:{};base64,{}".format(mime, b64)},
+                })
+            user_content = content
+        else:
+            user_content = user_prompt
+
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": False,
+        }
+
+        response = requests.post(url, headers=headers, json=payload, timeout=REQUEST_TIMEOUT)
+        if response.status_code != 200:
+            raise RuntimeError(
+                "API 错误 HTTP {}: {}".format(response.status_code, response.text[:500])
+            )
+
+        data = response.json()
+        choices = data.get("choices") or []
+        if not choices:
+            raise RuntimeError("API 返回中没有回复。返回内容：{}".format(json.dumps(data, ensure_ascii=False)[:500]))
+        text = (choices[0].get("message") or {}).get("content") or ""
+        return (text.strip(),)
+
+
 NODE_CLASS_MAPPINGS = {
     "Banana": Banana,
     "GPTImage": GPTImage,
+    "PromptLLM": PromptLLM,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "Banana": "🍌 Nano Banana Pro (API直连)",
     "GPTImage": "🖼 GPT Image 2.5 (API直连)",
+    "PromptLLM": "💬 GPT 写提示词 (API直连)",
 }
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
