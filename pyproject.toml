@@ -11,4 +11,3 @@ Repository = "https://github.com/qhhkkkk/QHh"
 [tool.comfy]
 PublisherId = "qhhkkkk"
 DisplayName = "QHh API Nodes"
-Icon = ""
